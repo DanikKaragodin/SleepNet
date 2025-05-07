@@ -7,8 +7,8 @@
 ## Create a virtual environment with conda
 
 ```bash
-conda create -n tinysleepnet python=3.6
-conda activate tinysleepnet
+conda create -n sleepnet python=3.6
+conda activate sleepnet
 pip install -r requirements.txt
 ```
 
