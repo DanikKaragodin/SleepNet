@@ -10,6 +10,8 @@ import matplotlib.pyplot as plt
 
 from data import load_data, get_subject_files
 from model import TinySleepNet
+from model_rnn import TinySleepNetRNN
+from model_cnn import TinySleepNetCNN
 from minibatching import (iterate_minibatches,
                           iterate_batch_seq_minibatches,
                           iterate_batch_multiple_seq_minibatches)
@@ -107,6 +109,70 @@ def train(
     test_files = np.hstack(test_files)
     test_x, test_y, _ = load_data(test_files)
 
+
+    #CNN
+    # # Функция для маскирования и обрезки данных
+    # def mask_and_align_data(x_list, y_list, logger):
+    #     masked_x, masked_y = [], []
+    #     for i, (x, y) in enumerate(zip(x_list, y_list)):
+    #         if x is None or y is None or len(x) == 0 or len(y) == 0:
+    #             logger.warning(f"Subject {i}: Empty or None data (x: {x}, y: {y}). Skipping.")
+    #             continue
+    #         len_x, len_y = len(x), len(y)
+    #         logger.info(f"Subject {i}: len(x)={len_x}, len(y)={len_y}")
+    #         if len_x != len_y:
+    #             logger.warning(
+    #                 f"Subject {i}: Mismatch in lengths (x: {len_x}, y: {len_y}). "
+    #                 f"Truncating to min length: {min(len_x, len_y)}"
+    #             )
+    #             min_len = min(len_x, len_y)
+    #             x = x[:min_len]
+    #             y = y[:min_len]
+    #         masked_x.append(x)
+    #         masked_y.append(y)
+    #     if not masked_x or not masked_y:
+    #         logger.error("No valid data after masking!")
+    #         raise ValueError("No valid data after masking!")
+    #     return masked_x, masked_y
+
+    # # Применяем маскирование
+    # logger.info("Checking and aligning training data...")
+    # train_x, train_y = mask_and_align_data(train_x, train_y, logger)
+    # logger.info("Checking and aligning validation data...")
+    # valid_x, valid_y = mask_and_align_data(valid_x, valid_y, logger)
+    # logger.info("Checking and aligning test data...")
+    # test_x, test_y = mask_and_align_data(test_x, test_y, logger)
+
+    # # Проверка перед объединением
+    # logger.info("Training set before stacking:")
+    # for i, (x, y) in enumerate(zip(train_x, train_y)):
+    #     logger.info(f"Subject {i}: x.shape={x.shape}, y.shape={y.shape}")
+    # logger.info("Validation set before stacking:")
+    # for i, (x, y) in enumerate(zip(valid_x, valid_y)):
+    #     logger.info(f"Subject {i}: x.shape={x.shape}, y.shape={y.shape}")
+    # logger.info("Test set before stacking:")
+    # for i, (x, y) in enumerate(zip(test_x, test_y)):
+    #     logger.info(f"Subject {i}: x.shape={x.shape}, y.shape={y.shape}")
+
+
+    # Объединение данных (один раз перед циклом эпох) 
+    #CNN
+
+    # logger.info("Combining validation data...")
+    # valid_x = np.vstack(valid_x)
+    # valid_y = np.hstack(valid_y)
+    # logger.info(f"Valid x shape: {valid_x.shape}, Valid y shape: {valid_y.shape}")
+    # assert len(valid_x) == len(valid_y), f"Valid x and y lengths mismatch: {len(valid_x)} != {len(valid_y)}"
+
+    # logger.info("Combining test data...")
+    # test_x = np.vstack(test_x)
+    # test_y = np.hstack(test_y)
+    # logger.info(f"Test x shape: {test_x.shape}, Test y shape: {test_y.shape}")
+    # assert len(test_x) == len(test_y), f"Test x and y lengths mismatch: {len(test_x)} != {len(test_y)}"
+
+
+
+
     # Print training, validation and test sets
     logger.info("Training set (n_night_sleeps={})".format(len(train_y)))
     for _x in train_x: logger.info(_x.shape)
@@ -122,22 +188,40 @@ def train(
     # class_weights = compute_portion_each_class(np.hstack(train_y))
     # config["class_weights"] = 1. - class_weights
     # Force to use 1.5 only for N1
+
+
+    # Calculate class weights based on inverse frequency
+    logger.info("Calculating class weights based on training data...")
+    train_y_flat = np.hstack(train_y)
+    class_counts = np.bincount(train_y_flat)
+    n_classes = len(class_counts)
+    n_total = len(train_y_flat)
+    class_weights = n_total / (class_counts * n_classes)
+    class_weights = class_weights.astype(np.float32)
+    
+    # Ensure no zero or infinite weights
+    class_weights = np.clip(class_weights, 0.1, 10.0)
+    logger.info(f"Computed class weights: {class_weights}")
+
     if config.get('weighted_cross_ent') is None:
         config['weighted_cross_ent'] = False
         logger.info(f'  Weighted cross entropy: Not specified --> default: {config["weighted_cross_ent"]}')
     else:
         logger.info(f'  Weighted cross entropy: {config["weighted_cross_ent"]}')
     if config['weighted_cross_ent']:
-        config["class_weights"] = np.asarray([1., 1.5, 1., 1., 1.], dtype=np.float32)
+        # config["class_weights"] = np.asarray([1., 1.5, 1., 1., 1.], dtype=np.float32)
+        # config["class_weights"] = np.asarray([1., 2, 1., 1.5, 1.5], dtype=np.float32)
+        class_weights[1] += 0.2
+        config["class_weights"] = class_weights
     else:
         config["class_weights"] = np.asarray([1., 1., 1., 1., 1.], dtype=np.float32)
     logger.info(f'  Weighted cross entropy: {config["class_weights"]}')
 
     # Create a model
-    model = TinySleepNet(
+    model = TinySleepNetRNN(
         config=config,
         output_dir=output_dir,
-        use_rnn=True,
+        # use_rnn=True,
         testing=False,
         use_best=False,
     )
@@ -180,6 +264,15 @@ def train(
             shuffle_idx=shuffle_idx,
             augment_seq=config['augment_seq'],
         )
+         #CNN
+        # train_x = np.vstack(train_x)
+        # train_y = np.hstack(train_y)
+        # train_minibatch_fn = iterate_minibatches(
+        #         train_x,
+        #         train_y,
+        #         batch_size=config["batch_size"],
+        #         shuffle=True
+        #     )
         if config['augment_signal']:
             # Create augmented data
             percent = 0.1
@@ -258,13 +351,34 @@ def train(
                 shuffle_idx=shuffle_idx,
                 augment_seq=config['augment_seq'],
             )
+
+             #CNN
+            # aug_train_x = np.vstack(aug_train_x)  # Форма: (total_epochs, 3000, 1, 1)
+            # aug_train_y = np.hstack(aug_train_y)  # Форма: (total_epochs,)
+            # aug_minibatch_fn = iterate_minibatches(
+            #     aug_train_x,
+            #     aug_train_y,
+            #     batch_size=config["batch_size"],
+            #     shuffle=True
+            # )
+            
             # Train
+            #logger.info(f"aug_minibatch {aug_minibatch_fn.items()}")
             train_outs = model.train(aug_minibatch_fn)
         else:
             # Train
             train_outs = model.train(train_minibatch_fn)
 
         # Create minibatches for validation
+         #CNN
+        # logger.info(f"Valid x shape after vstack: {valid_x.shape}")
+        # logger.info(f"Valid y shape after hstack: {valid_y.shape}")
+        # valid_minibatch_fn = iterate_minibatches(
+        #         valid_x,
+        #         valid_y,
+        #         batch_size=config["batch_size"],
+        #         shuffle=False
+        #     )
         valid_minibatch_fn = iterate_batch_multiple_seq_minibatches(
             valid_x,
             valid_y,
@@ -281,6 +395,13 @@ def train(
             valid_outs = model.evaluate(valid_minibatch_fn)
 
         # Create minibatches for testing
+         #CNN
+        #  test_minibatch_fn = iterate_minibatches( 
+        #     test_x,
+        #     test_y,
+        #     batch_size=config["batch_size"],
+        #     shuffle=False
+        #  )
         test_minibatch_fn = iterate_batch_multiple_seq_minibatches(
             test_x,
             test_y,

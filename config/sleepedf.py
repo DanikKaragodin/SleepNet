@@ -1,7 +1,7 @@
 params = {
     # Train
     "n_epochs": 200,
-    "learning_rate": 1e-4,
+    "learning_rate": 1e-4, #1e-4,
     "adam_beta_1": 0.9,
     "adam_beta_2": 0.999,
     "adam_epsilon": 1e-8,
@@ -19,7 +19,7 @@ params = {
     "sampling_rate": 100.0,
     "input_size": 3000,
     "n_classes": 5,
-    "l2_weight_decay": 1e-3,
+    "l2_weight_decay": 1e-3, #1e-3,
 
     # Dataset
     "dataset": "sleepedf",
@@ -35,8 +35,8 @@ params = {
 
 train = params.copy()
 train.update({
-    "seq_length": 20,
-    "batch_size": 15,
+    "seq_length": 20, #20,
+    "batch_size": 15, #15,
 })
 
 predict = params.copy()

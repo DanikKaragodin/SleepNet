@@ -1,6 +1,6 @@
 params = {
     # Train
-    "n_epochs": 200,
+    "n_epochs": 2,
     "learning_rate": 1e-4,
     "adam_beta_1": 0.9,
     "adam_beta_2": 0.999,

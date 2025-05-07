@@ -9,6 +9,8 @@ import tensorflow as tf
 
 from data import load_data, get_subject_files
 from model import TinySleepNet
+from model_cnn import TinySleepNetCNN
+from model_rnn import TinySleepNetRNN
 from minibatching import (iterate_minibatches,
                           iterate_batch_seq_minibatches,
                           iterate_batch_multiple_seq_minibatches)
