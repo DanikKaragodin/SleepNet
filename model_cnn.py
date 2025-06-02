@@ -172,11 +172,12 @@ class TinySleepNetCNN(object):
 
             net = nn.max_pool1d("maxpool1d_2", net, 4, 4)
             net = tf.layers.flatten(net, name="flatten_2")
-            net = tf.layers.dropout(net, rate=0.5, training=self.is_training, name="drop_2")
+        
 
             # Дополнительный полносвязный слой
             net = nn.fc("fc_1", net, 512)
             net = tf.nn.relu(net, name="relu_fc_1")
+            net = tf.layers.dropout(net, rate=0.5, training=self.is_training, name="drop_2")
 
         return net
 
